@@ -396,7 +396,7 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O/1/I
 const ROOM_CODE_LEN = 6;
 
 function setupWebSocket(httpServer) {
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ server: httpServer });
   const rooms = new Map(); // code -> Room
 
   function genCode() {

@@ -523,7 +523,7 @@ let botAI = { decisionTimer: 0, plan: 'hold', attackCd: 0, kiCd: 0, ultCd: 0, fl
 // cuando lo sirva Express (localmente o en Render) usa la misma origen.
 const API_BASE = (window.location.protocol === 'file:') ? 'http://localhost:3000' : '';
 const WS_URL = (window.location.protocol === 'file:') ? 'ws://localhost:3000/ws'
-    : ((window.location.protocol === 'https:') ? 'wss://' : 'ws://') + window.location.host + '/ws';
+    : (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws';
 const LS_STORAGE = { mute: 'juegitopro_muted', token: 'juegitopro_token' };
 
 let sessionUser = null; // cuenta activa del backend | null
@@ -668,6 +668,15 @@ function showOnlineMsg(txt, ok) {
     const el = document.getElementById('online-status');
     if (el) { el.textContent = txt; el.style.color = ok ? '#7CFC00' : '#ff8888'; }
 }
+
+function updateOnlineStatus() {
+    if (!net) { document.getElementById('online-label').textContent = 'DESconectado'; document.getElementById('online-dot').style.background = '#ff8888'; return; }
+    if (net.ws && net.ws.readyState === 1) {
+        document.getElementById('online-label').textContent = 'CONECTADO'; document.getElementById('online-dot').style.background = '#7CFC00';
+    } else {
+        document.getElementById('online-label').textContent = 'DESCONEXIÓN'; document.getElementById('online-dot').style.background = '#ff8888';
+    }
+}
 function setOnlinePanel(name) {
     ['online-menu', 'online-waiting', 'online-charselect'].forEach((id) => {
         const el = document.getElementById(id);
@@ -682,9 +691,11 @@ function openOnline() {
     setOnlinePanel('menu');
     updateOnlineTabs();
     showOnlineMsg('', true);
+    updateOnlineStatus();
 }
 function closeOnline() {
     netCleanup();
+    updateOnlineStatus();
     const ov = document.getElementById('online-overlay');
     if (ov) ov.style.display = 'none';
 }
@@ -713,7 +724,7 @@ function connectAndDo(action) {
         remoteHeld: 0, actionQueue: [], lastSentMask: -1, endSent: false,
     };
     const ws = net.ws;
-    ws.onopen = () => { if (net) netSend({ t: 'auth', token }); };
+    ws.onopen = () => { if (net) { netSend({ t: 'auth', token }); updateOnlineStatus(); } };
     ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } handleNet(m); };
     ws.onclose = () => handleNetClose();
     ws.onerror = () => showOnlineMsg('No se pudo conectar al servidor.', false);
@@ -734,6 +745,7 @@ function handleNet(msg) {
         case 'authed':
             if (!net) return;
             setOnlinePanel('waiting');
+            updateOnlineStatus();
             if (net.want === 'create') netSend({ t: 'create', mode: net.mode });
             else netSend({ t: 'join', code: net.joinCode });
             break;
@@ -741,6 +753,7 @@ function handleNet(msg) {
             net.gotRoom = true;
             { const el = document.getElementById('room-code'); if (el) el.textContent = msg.code; }
             showOnlineMsg('Sala creada — comparte el código con tu rival.', true);
+            updateOnlineStatus();
             break;
         case 'match_found':
             net.gotRoom = true;
@@ -750,6 +763,7 @@ function handleNet(msg) {
             myReadySent = false;
             { const btn = document.getElementById('ol-listobtn'); if (btn) btn.disabled = false; }
             showOnlineMsg('Rival encontrado. Elige personaje y pulsa LISTO.', true);
+            updateOnlineStatus();
             break;
         case 'start':
             net.mySide = msg.side; net.mode = msg.mode;
@@ -833,6 +847,7 @@ function handleNetClose() {
     if (!net) return;
     const inMatch = gameMode === 'online';
     endOnlineAborted(inMatch ? 'CONEXIÓN PERDIDA — PARTIDA ANULADA' : 'Se cerró la conexión con el servidor.');
+    updateOnlineStatus();
     if (!inMatch) setOnlinePanel('menu');
     net = null;
 }
