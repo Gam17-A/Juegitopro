@@ -437,39 +437,44 @@
         </div>
 
         <div id="online-overlay">
-            <div class="online-box">
-                <div class="ranking-head">
-                    <h2>🌐 PARTIDA ONLINE</h2>
-                    <button id="online-close-btn" onclick="closeOnline()">✕ Salir</button>
+            <div class="online-box online-v2">
+                <div class="ranking-head" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0;">🌐 PARTIDA ONLINE</h2>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <span id="online-dot" style="width:10px; height:10px; border-radius:50%; background:#ff8888; display:inline-block;"></span>
+                        <span id="online-label" style="font-size:13px; color:#aaa; font-weight:bold;">DESconectado</span>
+                        <button id="online-close-btn" onclick="closeOnline()" style="background:#332200; border:1px solid #555; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">✕</button>
+                    </div>
                 </div>
 
-                <div id="online-menu">
-                    <div id="ol-modes">
+                <!-- Menú principal -->
+                <div id="online-menu" class="online-panel">
+                    <div id="ol-modes" style="display:flex; gap:8px; margin-bottom:12px;">
                         <button id="ol-mode-ranked" class="mode-btn mode-active" onclick="setOnlineMode('ranked')">🏅 RANKED</button>
                         <button id="ol-mode-friendly" class="mode-btn" onclick="setOnlineMode('friendly')">🤝 AMISTOSA</button>
                     </div>
-                    <p class="online-note">Crea una sala y comparte el código, o únete con el código de otra persona. En RANKED la victoria te sube de rango.</p>
+                    <p class="online-note">En RANKED, la victoria te sube de rango. Comparte el código con tu rival.</p>
 
-                    <div class="ol-actions">
-                        <button class="auth-btn" onclick="connectAndDo('create')">Crear sala</button>
-                        <span style="margin: 0 6px;">o</span>
-                        <input id="join-code" class="join-code-input" maxlength="6" placeholder="CÓDIGO" autocomplete="off" />
-                        <button class="auth-btn" onclick="connectAndDo('join')">Unirme</button>
+                    <button id="ol-btn-create" class="auth-btn" onclick="connectAndDo('create')" style="width:100%; margin-bottom:8px;">✨ CREAR SALA</button>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <input id="join-code" class="join-code-input" maxlength="6" placeholder="CÓDIGO" autocomplete="off" style="flex:1;" />
+                        <button id="ol-btn-join" class="auth-btn" onclick="connectAndDo('join')">Entrar</button>
                     </div>
                 </div>
 
-                <div id="online-waiting" style="display:none;">
-                    <p class="online-note">Comparte este código con tu rival:</p>
-                    <div id="room-code" class="room-code">·····</div>
-                    <button class="auth-btn" onclick="cancelWaiting()">Cancelar</button>
+                <!-- Esperando código de sala -->
+                <div id="online-waiting" class="online-panel" style="display:none;">
+                    <p class="online-note" style="text-align:center;">Código de sala:</p>
+                    <div id="room-code" class="room-code" style="margin:8px auto; font-size:32px; letter-spacing:6px;">·····</div>
+                    <button class="auth-btn" onclick="cancelWaiting()" style="background:#332200; border:1px solid #ff8888; color:#ff8888;">Cancelar</button>
                 </div>
 
-                <div id="online-charselect" style="display:none;">
-                    <p id="online-myrank" class="online-note" style="color:#ffcc00;">Tú: </p>
-                    <p id="online-rival" class="online-note" style="color:#00ffff;"></p>
-                    <p id="online-ctrl-note" class="online-note"></p>
-                    <div id="online-roster" class="online-roster"></div>
-                    <button id="ol-listobtn" class="auth-btn listo-btn" onclick="sendReady()">LISTO ✔</button>
+                <!-- Selección de personaje -->
+                <div id="online-charselect" class="online-panel" style="display:none;">
+                    <p id="online-myrank" class="online-note" style="color:#ffcc00; margin-bottom:4px;">Tú: </p>
+                    <p id="online-rival" class="online-note" style="color:#00ffff; margin-bottom:12px;">Esperando rival...</p>
+                    <div id="online-roster" class="online-roster" style="margin-bottom:12px;"></div>
+                    <button id="ol-listobtn" class="auth-btn listo-btn" onclick="sendReady()" style="background:#003300; border-color:#33ff99; color:#33ff99;">✅ LISTO</button>
                 </div>
 
                 <p id="online-status" class="online-status"></p>
