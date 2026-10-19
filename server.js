@@ -397,6 +397,19 @@ const ROOM_CODE_LEN = 6;
 
 function setupWebSocket(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const HEARTBEAT_INTERVAL = 30000;
+  const HEARTBEAT_MSG = JSON.stringify({ t: 'hb' });
+
+  function startHeartbeat() {
+    const interval = setInterval(() => {
+      wss.clients.forEach((client) => {
+        if (client.readyState === client.OPEN) client.send(HEARTBEAT_MSG);
+      });
+    }, HEARTBEAT_INTERVAL);
+    wss.on('close', () => clearInterval(interval));
+  }
+  startHeartbeat();
+
   const rooms = new Map(); // code -> Room
 
   function genCode() {
