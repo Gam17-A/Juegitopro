@@ -20,9 +20,10 @@ const { WebSocketServer } = require('ws');
 const { rateLimit } = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3000;
-const GAME_FILE = path.join(__dirname, 'Juego3_html_Despertar_Mejorado (2)(1).html');
+const GAME_FILE = path.join(__dirname, 'index.html');
 
 // ---- Constantes de validación ----
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
@@ -82,7 +83,7 @@ const userSchema = new mongoose.Schema({
   username:    { type: String, required: true, trim: true, maxlength: 16 },
   usernameKey: { type: String, required: true, unique: true, index: true }, // minúsculas (dedupe)
   passHash:    { type: String, required: true },
-  tokenHash:   { type: String, default: null }, // hash sha256 del token de sesión activa
+  tokenHashes: { type: [String], default: [], index: true },
   rankWins:    { type: Number, default: 0 },
   rankLosses:  { type: Number, default: 0 },
   rankDraws:   { type: Number, default: 0 },
@@ -122,14 +123,18 @@ function createMongoStore() {
       return ok ? u : null;
     },
     async findUserByTokenHash(tokenHash) {
-      const u = await User.findOne({ tokenHash }).lean();
+      const u = await User.findOne({ tokenHashes: tokenHash }).lean();
       return u || null;
     },
     async setToken(usernameKey, tokenHash) {
-      await User.updateOne({ usernameKey }, { $set: { tokenHash } });
+      await User.updateOne({ usernameKey }, { $push: { tokenHashes: { $each: [tokenHash], $slice: -5 } } });
     },
-    async clearToken(usernameKey) {
-      await User.updateOne({ usernameKey }, { $set: { tokenHash: null } });
+    async clearToken(usernameKey, tokenHash) {
+      if (tokenHash) {
+        await User.updateOne({ usernameKey }, { $pull: { tokenHashes: tokenHash } });
+      } else {
+        await User.updateOne({ usernameKey }, { $set: { tokenHashes: [] } });
+      }
     },
     async recordRanked({ p1, p2, result }) {
       const incFor = (kind) =>
@@ -180,7 +185,7 @@ function createMemStore() {
         username,
         usernameKey: key,
         passHash: '',
-        tokenHash: null,
+        tokenHashes: [],
         rankWins: 0,
         rankLosses: 0,
         rankDraws: 0,
@@ -212,15 +217,24 @@ function createMemStore() {
       return ok ? row : null;
     },
     async findUserByTokenHash(tokenHash) {
-      for (const row of users.values()) if (row.tokenHash === tokenHash) return row;
+      for (const row of users.values()) if (row.tokenHashes && row.tokenHashes.includes(tokenHash)) return row;
       return null;
     },
     async setToken(usernameKey, tokenHash) {
-      touch(usernameKey).tokenHash = tokenHash;
+      const row = touch(usernameKey);
+      if (!row.tokenHashes) row.tokenHashes = [];
+      row.tokenHashes.push(tokenHash);
+      if (row.tokenHashes.length > 5) row.tokenHashes = row.tokenHashes.slice(-5);
     },
-    async clearToken(usernameKey) {
+    async clearToken(usernameKey, tokenHash) {
       const row = users.get(usernameKey.toLowerCase());
-      if (row) row.tokenHash = null;
+      if (row) {
+        if (tokenHash && row.tokenHashes) {
+          row.tokenHashes = row.tokenHashes.filter(t => t !== tokenHash);
+        } else {
+          row.tokenHashes = [];
+        }
+      }
     },
     async recordRanked({ p1, p2, result }) {
       const apply = (name, kind) => {
@@ -280,6 +294,7 @@ async function authRequired(req, res, next) {
   if (!user) return res.status(401).json({ error: 'Sesión inválida o expirada.' });
   req.user = toPublicUser(user);
   req.usernameKey = user.usernameKey;
+  req.tokenHash = tokenHash;
   next();
 }
 
@@ -339,7 +354,7 @@ async function startServer() {
 
   // 4) Cerrar sesión
   app.post('/api/auth/logout', authRequired, async (req, res) => {
-    await store.clearToken(req.usernameKey);
+    await store.clearToken(req.usernameKey, req.tokenHash);
     res.json({ ok: true });
   });
 
@@ -397,18 +412,21 @@ const ROOM_CODE_LEN = 6;
 
 function setupWebSocket(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  const HEARTBEAT_INTERVAL = 30000;
-  const HEARTBEAT_MSG = JSON.stringify({ t: 'hb' });
+  const HEARTBEAT_INTERVAL = 25000;
+  let heartbeatInterval;
 
   function startHeartbeat() {
-    const interval = setInterval(() => {
+    heartbeatInterval = setInterval(() => {
       wss.clients.forEach((client) => {
-        if (client.readyState === client.OPEN) client.send(HEARTBEAT_MSG);
+        if (!client.isAlive) return client.terminate();
+        client.isAlive = false;
+        client.ping();
       });
     }, HEARTBEAT_INTERVAL);
-    wss.on('close', () => clearInterval(interval));
   }
+
   startHeartbeat();
+  wss.on('close', () => clearInterval(heartbeatInterval));
 
   const rooms = new Map(); // code -> Room
 
@@ -428,6 +446,8 @@ function setupWebSocket(httpServer) {
   };
 
   wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
     ws.user = null; // { usernameKey, username, pub }
     ws.room = null; // Room | null
 

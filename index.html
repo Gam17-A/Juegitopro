@@ -620,7 +620,7 @@ async function submitAuth(register) {
         out.textContent = '';
         setAccountUI();
     } else {
-        out.textContent = (r.json && r.json.msg) || 'Error al iniciar sesión.';
+        out.textContent = (r.json && (r.json.error || r.json.msg)) || 'Error al iniciar sesión.';
     }
 }
 
@@ -682,7 +682,7 @@ function updateOnlineStatus() {
 function setOnlinePanel(name) {
     ['online-menu', 'online-waiting', 'online-charselect'].forEach((id) => {
         const el = document.getElementById(id);
-        if (el) el.style.display = (id === name) ? 'block' : 'none';
+        if (el) el.style.display = (id === 'online-' + name) ? 'block' : 'none';
     });
 }
 function openOnline() {
@@ -774,6 +774,7 @@ function handleNet(msg) {
             applyOpponent(msg.opponent);
             launchOnlineMatch();
             break;
+        case 'hb': break;
         case 'in': net.remoteHeld = msg.m; break;
         case 'act': net.actionQueue.push(msg.a); break;
         case 'ranked_result': handleRankedResult(msg); break;
