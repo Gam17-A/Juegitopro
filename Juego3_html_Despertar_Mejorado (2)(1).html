@@ -670,12 +670,14 @@ function showOnlineMsg(txt, ok) {
 }
 
 function updateOnlineStatus() {
-    if (!net) { document.getElementById('online-label').textContent = 'DESconectado'; document.getElementById('online-dot').style.background = '#ff8888'; return; }
-    if (net.ws && net.ws.readyState === 1) {
-        document.getElementById('online-label').textContent = 'CONECTADO'; document.getElementById('online-dot').style.background = '#7CFC00';
-    } else {
-        document.getElementById('online-label').textContent = 'DESCONEXIÓN'; document.getElementById('online-dot').style.background = '#ff8888';
-    }
+    try {
+        const dot = document.getElementById('online-dot');
+        const label = document.getElementById('online-label');
+        if (!dot || !label) { console.warn('[online-status] online-dot/label not found in DOM'); return; }
+        if (!net) { label.textContent = 'DESconectado'; dot.style.background = '#ff8888'; return; }
+        if (net.ws && net.ws.readyState === 1) { label.textContent = 'CONECTADO'; dot.style.background = '#7CFC00'; }
+        else { label.textContent = 'DESCONEXIÓN'; dot.style.background = '#ff8888'; }
+    } catch (e) { console.error('[online-status] error:', e); }
 }
 function setOnlinePanel(name) {
     ['online-menu', 'online-waiting', 'online-charselect'].forEach((id) => {
@@ -684,7 +686,8 @@ function setOnlinePanel(name) {
     });
 }
 function openOnline() {
-    if (!sessionUser) { const m = document.getElementById('auth-msg'); if (m) m.textContent = 'Crea una cuenta o inicia sesión para jugar online.'; return; }
+    console.log('[openOnline] sessionUser=', !!sessionUser, 'token=', !!tryGetToken());
+    if (!sessionUser) { const m = document.getElementById('auth-msg'); if (m) m.textContent = 'Crea una cuenta o inicia sesión para jugar online.'; console.log('[openOnline] blocked: no session'); return; }
     closeOnline();
     document.getElementById('online-overlay').style.display = 'flex';
     buildOnlineRoster();
@@ -692,6 +695,7 @@ function openOnline() {
     updateOnlineTabs();
     showOnlineMsg('', true);
     updateOnlineStatus();
+    console.log('[openOnline] overlay open, panel=set');
 }
 function closeOnline() {
     netCleanup();
