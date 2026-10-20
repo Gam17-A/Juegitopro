@@ -13,9 +13,9 @@
         }
         #game-wrapper {
             position: relative; display: inline-block; border: 4px solid #333;
-            box-shadow: 0 0 50px rgba(0, 150, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.5) inset; 
-            width: 800px; height: 450px; background: #000; overflow: hidden;
-            border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0, 150, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.5) inset;
+            width: min(96vw, calc(94vh * 16 / 9)); aspect-ratio: 16 / 9;
+            max-width: 100%; background: #000; overflow: hidden; border-radius: 8px;
         }
         
         .scanlines {
@@ -288,9 +288,8 @@
     /* En pantallas tactiles el juego ocupa toda la pantalla */
     @media (hover: none) and (pointer: coarse) {
         body { height: 100dvh; overflow: hidden; align-items: flex-start; padding-top: 0; }
-        #game-wrapper { border: none; border-radius: 0; box-shadow: none; }
-        #game-wrapper canvas { width: 100%; height: 100%; object-fit: cover; }
-        /* Los controles tactiles solo durante la partida (no tapan menus online/nivel) */
+        #game-wrapper { border: none; border-radius: 0; box-shadow: none; width: 100vw; height: 100vh; }
+        #game-wrapper canvas { width: 100%; height: 100%; object-fit: contain; }
         #mobile-ctrl { display: none !important; }
         body.in-match #mobile-ctrl { display: flex !important; }
     }
@@ -309,37 +308,37 @@
     @media (hover: hover) and (pointer: fine) {
         #mobile-ctrl { display: none !important; }
     }
-    /* Joystick izquierdo (transparente) */
+    /* Joystick izquierdo (transparente, grande para celular) */
     .joy-zone {
-        width: 160px; height: 160px; position: relative; border-radius: 50%;
-        background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.14);
-        box-shadow: inset 0 0 20px rgba(255,255,255,0.05), 0 0 12px rgba(0,0,0,0.35);
+        width: 200px; height: 200px; position: relative; border-radius: 50%;
+        background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2);
+        box-shadow: inset 0 0 25px rgba(255,255,255,0.08), 0 0 15px rgba(0,0,0,0.4);
         touch-action: none; user-select: none; flex-shrink: 0;
     }
     .joy-zone::before {
-        content: ''; position: absolute; inset: 30%; border-radius: 50%;
-        border: 1px dashed rgba(255,255,255,0.16); pointer-events: none;
+        content: ''; position: absolute; inset: 25%; border-radius: 50%;
+        border: 1.5px dashed rgba(255,255,255,0.22); pointer-events: none;
     }
     .joy-stick {
-        position: absolute; width: 52px; height: 52px; border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,200,0,0.85));
-        border: 2px solid rgba(255,255,255,0.9); box-shadow: 0 0 12px rgba(255,200,0,0.35), inset -2px -2px 8px rgba(0,0,0,0.25);
-        top: 44px; left: 44px; touch-action: none; pointer-events: none;
+        position: absolute; width: 66px; height: 66px; border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,200,0,0.9));
+        border: 2.5px solid rgba(255,255,255,0.95); box-shadow: 0 0 16px rgba(255,200,0,0.5), inset -3px -3px 10px rgba(0,0,0,0.25);
+        top: 67px; left: 67px; touch-action: none; pointer-events: none;
         will-change: transform;
     }
-    /* Acciones derecha (transparentes) */
-    .act-zone { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding-bottom: 4px; }
+    /* Acciones derecha (transparentes, grandes) */
+    .act-zone { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding-bottom: 6px; }
     .act-btn {
-        width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
-        background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.95); font-size: 11px; font-weight: bold;
-        display: flex; align-items: center; justify-content: center; text-align: center;
-        box-shadow: inset 0 2px 4px rgba(255,255,255,0.06), 0 3px 8px rgba(0,0,0,0.3);
+        width: 78px; height: 78px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.98); font-size: 13px; font-weight: bold;
+        display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2;
+        box-shadow: inset 0 2px 6px rgba(255,255,255,0.08), 0 4px 10px rgba(0,0,0,0.35);
         touch-action: none; user-select: none; pointer-events: auto;
-        backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
         transition: background 0.1s, border-color 0.1s, transform 0.06s;
     }
     .act-btn:active {
-        background: rgba(255,255,255,0.24); border-color: rgba(255,200,0,0.8); transform: scale(0.92);
+        background: rgba(255,255,255,0.32); border-color: rgba(255,200,0,0.9); transform: scale(0.9);
     }
 </style>
 </head>
@@ -1134,7 +1133,7 @@ function keyOff(code) {
     const stick = document.getElementById('joy-stick');
     const zone = document.getElementById('joy-zone');
     if (!stick || !zone) return;
-    let ptr = null; const maxDist = 42;
+    let ptr = null; const maxDist = 55;
     function setFromEvent(e) {
         const r = zone.getBoundingClientRect();
         const cx = r.width/2, cy = r.height/2;
@@ -1154,13 +1153,41 @@ function keyOff(code) {
     zone.addEventListener('pointercancel', (e) => { if (e.pointerId === ptr) { ptr = null; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); } });
 })();
 
-// Botones de acción con touch
+// Botones de acción con touch (con mapping para p2 online)
 (function initMobileActions() {
+    const p2Map = { 'KeyA':'ArrowLeft','KeyD':'ArrowRight','KeyW':'ArrowUp','KeyS':'ArrowDown',
+                    'KeyC':'KeyI','KeyF':'KeyK','KeyE':'KeyL','KeyQ':'KeyU','KeyR':'KeyO','KeyT':'KeyP' };
     document.querySelectorAll('.act-btn').forEach(btn => {
         const code = btn.getAttribute('data-key');
-        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; btn.style.transform = 'scale(0.9)'; });
-        btn.addEventListener('pointerup', (e) => { e.preventDefault(); keys[code] = false; btn.style.transform = ''; });
-        btn.addEventListener('pointercancel', () => { keys[code] = false; btn.style.transform = ''; });
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            keyOn(code);
+            if (isOnline() && net && net.mySide === 'p2') {
+                const mapped = p2Map[code];
+                if (mapped) keyOn(mapped);
+            }
+            btn.style.transform = 'scale(0.92)';
+            btn.style.background = 'rgba(255,255,255,0.28)';
+        });
+        btn.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            keyOff(code);
+            if (isOnline() && net && net.mySide === 'p2') {
+                const mapped = p2Map[code];
+                if (mapped) keyOff(mapped);
+            }
+            btn.style.transform = '';
+            btn.style.background = '';
+        });
+        btn.addEventListener('pointercancel', () => {
+            keyOff(code);
+            if (isOnline() && net && net.mySide === 'p2') {
+                const mapped = p2Map[code];
+                if (mapped) keyOff(mapped);
+            }
+            btn.style.transform = '';
+            btn.style.background = '';
+        });
     });
 })();
 window.addEventListener('blur', () => {
@@ -3023,16 +3050,16 @@ function fitGame() {
         wrapper.style.transform = ''; wrapper.style.transformOrigin = 'center center';
         return;
     }
-    // Movil: casi pantalla completa (deja solo 8% para bordes/controles)
+    // Movil: pantalla grande y cómoda, usa casi todo el espacio vertical/horizontal
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
-    const landscape = vw >= vh;
+    const landscape = vw > vh;
     let w, h;
     if (landscape) {
-        w = vw * 0.96; h = w * (450 / 800);
-        if (h > vh * 0.92) { h = vh * 0.92; w = h * (800 / 450); }
+        h = vh * 0.88; w = h * (800 / 450);
+        if (w > vw * 0.96) { w = vw * 0.96; h = w * (450 / 800); }
     } else {
-        w = vw * 0.98; h = Math.min(w * (450 / 800), vh * 0.88);
+        w = vw * 0.98; h = Math.min(w * (450 / 800), vh * 0.82);
         w = h * (800 / 450);
     }
     wrapper.style.width = Math.floor(w) + 'px';
