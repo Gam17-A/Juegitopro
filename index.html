@@ -284,33 +284,59 @@
         #ol-modes .mode-btn { font-size: 13px; }
         #ol-modes .ol-mode-active { border-color: #00ccff !important; box-shadow: 0 0 12px #00ccff; }
         .listo-btn { font-size: 15px; padding: 10px 30px; border-color: #33ff99; color: #33ff99; }
-    /* ==== MOBILE TOUCH CONTROLS ==== */
-    @media (max-width: 760px), (hover: none) and (pointer: coarse) {
-        .controls-info { display: none !important; }
-        #mobile-ctrl { display: flex !important; }
-    }
+    /* ==== MOBILE TOUCH CONTROLS - responsive portrait/landscape ==== */
     #mobile-ctrl {
         position: fixed; bottom: 10px; left: 0; right: 0; z-index: 60;
-        display: none; flex-direction: row; justify-content: center; gap: 6px;
-        padding: 6px; background: rgba(0,0,0,0.85); border-top: 2px solid #555;
-        touch-action: none;
+        display: none; flex-direction: row; justify-content: center; gap: 12px;
+        align-items: center; padding: 8px 10px;
+        background: rgba(10,10,30,0.92); border-top: 2px solid #666;
+        backdrop-filter: blur(6px); touch-action: none;
+        border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.7);
     }
-    .mob-btn {
-        background: #222; border: 2px solid #777; color: #fff; border-radius: 10px;
-        font-size: 13px; padding: 8px 10px; user-select: none; touch-action: none;
-        box-shadow: 0 2px 0 #111;
+    /* Solo en horizontal (landscape) se muestra */
+    @media (orientation: landscape) and (max-height: 500px), (orientation: landscape) {
+        #mobile-ctrl { display: flex !important; }
+        .controls-info { display: none !important; }
     }
-    .mob-btn:active { transform: translateY(2px); border-color: #ffcc00; }
+    /* Joystick y botones */
+    .joy-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+    .joy-base {
+        width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #2a2a4a, #111);
+        border: 3px solid #777; box-shadow: inset 0 0 15px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.6);
+    }
+    .joy-stick {
+        position: absolute; width: 48px; height: 48px; border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #fff, #ffcc00);
+        border: 2px solid #fff; box-shadow: 0 0 12px rgba(255,200,0,0.4), inset -2px -2px 6px rgba(0,0,0,0.2);
+        top: 31px; left: 31px; touch-action: none; pointer-events: auto; user-select: none;
+    }
+    .act-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .act-btn {
+        width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
+        background: linear-gradient(145deg, #222, #111); color: #fff; font-size: 11px; font-weight: bold;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        box-shadow: 0 4px 0 #111, inset 0 2px 4px rgba(255,255,255,0.08);
+        touch-action: none; user-select: none; pointer-events: auto;
+    }
+    .act-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #111, inset 0 2px 4px rgba(255,255,255,0.08); border-color: #ffcc00; }
+    .act-btn .icon { font-size: 20px; line-height: 1; }
 </style>
 </head>
 <body>
 
     <div id="mobile-ctrl">
-        <button class="mob-btn" onclick="keyOn('KeyA')" onpointerup="keyOff('KeyA')">←</button>
-        <button class="mob-btn" onclick="keyOn('KeyD')" onpointerup="keyOff('KeyD')">→</button>
-        <button class="mob-btn" onclick="keyOn('KeyW')" onpointerup="keyOff('KeyW')">↑</button>
-        <button class="mob-btn" onclick="keyOn('KeyF')" onpointerup="keyOff('KeyF')">✊</button>
-        <button class="mob-btn" onclick="keyOn('KeyE')" onpointerup="keyOff('KeyE')">⚡</button>
+        <div class="joy-wrap" id="joy-wrap">
+            <div class="joy-base" id="joy-base"></div>
+            <div class="joy-stick" id="joy-stick"></div>
+        </div>
+        <div class="act-grid" id="act-grid">
+            <button class="act-btn" data-key="KeyF" aria-label="Golpe"><div class="icon">✊</div><div>GOLPE</div></button>
+            <button class="act-btn" data-key="KeyE" aria-label="Ki"><div class="icon">⚡</div><div>KI</div></button>
+            <button class="act-btn" data-key="KeyQ" aria-label="Ult"><div class="icon">🔥</div><div>ULT</div></button>
+            <button class="act-btn" data-key="KeyR" aria-label="Volar"><div class="icon">🕊️</div><div>VOLAR</div></button>
+            <button class="act-btn" data-key="KeyC" aria-label="Cargar"><div class="icon">🔋</div><div>CARGAR</div></button>
+            <button class="act-btn" data-key="KeyT" aria-label="Despertar"><div class="icon">☀️</div><div>DESPERTAR</div></button>
+        </div>
     </div>
 
     <div id="game-wrapper">
@@ -1064,6 +1090,51 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 function keyOn(code) { if (gameRunning) keys[code] = true; }
 function keyOff(code) { keys[code] = false; }
+
+// ---- Joystick virtual ----
+(function initJoystick() {
+    const stick = document.getElementById('joy-stick');
+    const wrap = document.getElementById('joy-wrap');
+    if (!stick || !wrap) return;
+    let active = false;
+    const maxDist = 36;
+
+    function move(x, y) {
+        const rect = wrap.getBoundingClientRect();
+        const cx = rect.width/2, cy = rect.height/2;
+        let dx = x - rect.left - cx, dy = y - rect.top - cy;
+        const d = Math.min(Math.hypot(dx, dy), maxDist);
+        const angle = Math.atan2(dy, dx);
+        stick.style.transform = 'translate(' + (Math.cos(angle)*d) + 'px, ' + (Math.sin(angle)*d) + 'px)';
+        if (d < 10) {
+            keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS');
+        } else {
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) { keyOn('KeyD'); keyOff('KeyA'); }
+                else { keyOn('KeyA'); keyOff('KeyD'); }
+                keyOff('KeyW'); keyOff('KeyS');
+            } else {
+                if (dy < 0) { keyOn('KeyW'); keyOff('KeyS'); }
+                else { keyOn('KeyS'); keyOff('KeyW'); }
+                keyOff('KeyA'); keyOff('KeyD');
+            }
+        }
+    }
+    stick.addEventListener('touchstart', (e) => { e.preventDefault(); active = true; }, {passive:false});
+    stick.addEventListener('touchmove', (e) => { if (!active) return; e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:false});
+    stick.addEventListener('touchend', () => { active = false; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); });
+    stick.addEventListener('touchcancel', () => { active = false; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); });
+})();
+
+// Botones de acción con touch
+(function initMobileActions() {
+    document.querySelectorAll('.act-btn').forEach(btn => {
+        const code = btn.getAttribute('data-key');
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); if (gameRunning) keys[code] = true; });
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[code] = false; });
+        btn.addEventListener('touchcancel', () => { keys[code] = false; });
+    });
+})();
 window.addEventListener('blur', () => {
     if (gameRunning && !paused && gameMode !== 'online') togglePause();
     for (let k in keys) keys[k] = false;
@@ -2914,7 +2985,10 @@ function animate() {
 function fitGame() {
     const wrapper = document.getElementById('game-wrapper');
     if (!wrapper) return;
-    const scale = Math.min(1, (window.innerWidth - 8) / 840);
+    const mobileOpen = document.getElementById('mobile-ctrl') && window.getComputedStyle(document.getElementById('mobile-ctrl')).display !== 'none';
+    const availH = window.innerHeight - (mobileOpen ? 130 : 20);
+    const availW = window.innerWidth - 8;
+    const scale = Math.min(1, availW / 840, availH / 450);
     wrapper.style.transform = (scale < 1) ? `scale(${scale})` : '';
     wrapper.style.transformOrigin = 'top center';
 }
