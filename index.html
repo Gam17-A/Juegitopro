@@ -308,7 +308,7 @@
     }
     /* Joystick izquierdo (transparente) */
     .joy-zone {
-        width: 132px; height: 132px; position: relative; border-radius: 50%;
+        width: 140px; height: 140px; position: relative; border-radius: 50%;
         background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.14);
         box-shadow: inset 0 0 20px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.35);
         touch-action: none; user-select: none; flex-shrink: 0;
@@ -318,10 +318,11 @@
         border: 1px dashed rgba(255,255,255,0.16); pointer-events: none;
     }
     .joy-stick {
-        position: absolute; width: 44px; height: 44px; border-radius: 50%;
+        position: absolute; width: 52px; height: 52px; border-radius: 50%;
         background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,200,0,0.85));
         border: 2px solid rgba(255,255,255,0.9); box-shadow: 0 0 12px rgba(255,200,0,0.35), inset -2px -2px 8px rgba(0,0,0,0.25);
-        top: 44px; left: 44px; touch-action: none; pointer-events: auto;
+        top: 44px; left: 44px; touch-action: none; pointer-events: none;
+        will-change: transform;
     }
     /* Acciones derecha (transparentes) */
     .act-zone { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding-bottom: 4px; }
@@ -1114,31 +1115,33 @@ function keyOff(code) { keys[code] = false; }
     const stick = document.getElementById('joy-stick');
     const zone = document.getElementById('joy-zone');
     if (!stick || !zone) return;
-    let active = false; const maxDist = 36;
-    function setStick(x, y) {
+    let ptr = null; const maxDist = 42;
+    function setFromEvent(e) {
         const r = zone.getBoundingClientRect();
         const cx = r.width/2, cy = r.height/2;
+        const x = e.clientX || (e.touches && e.touches[0].clientX), y = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!x || !y) return;
         let dx = x - r.left - cx, dy = y - r.top - cy;
         const d = Math.min(Math.hypot(dx, dy), maxDist);
         const a = Math.atan2(dy, dx);
         stick.style.transform = 'translate(' + (Math.cos(a)*d) + 'px, ' + (Math.sin(a)*d) + 'px)';
-        if (d < 10) { keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); }
+        if (d < 12) { keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); }
         else if (Math.abs(dx) > Math.abs(dy)) { if (dx > 0) { keyOn('KeyD'); keyOff('KeyA'); } else { keyOn('KeyA'); keyOff('KeyD'); } keyOff('KeyW'); keyOff('KeyS'); }
         else { if (dy < 0) { keyOn('KeyW'); keyOff('KeyS'); } else { keyOn('KeyS'); keyOff('KeyW'); } keyOff('KeyA'); keyOff('KeyD'); }
     }
-    stick.addEventListener('touchstart', (e) => { e.preventDefault(); active = true; const t = e.touches[0]; setStick(t.clientX, t.clientY); }, {passive:false});
-    stick.addEventListener('touchmove', (e) => { if (!active) return; e.preventDefault(); const t = e.touches[0]; setStick(t.clientX, t.clientY); }, {passive:false});
-    stick.addEventListener('touchend', () => { active = false; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); });
-    stick.addEventListener('touchcancel', () => { active = false; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); });
+    zone.addEventListener('pointerdown', (e) => { ptr = e.pointerId; zone.setPointerCapture(ptr); setFromEvent(e); });
+    zone.addEventListener('pointermove', (e) => { if (e.pointerId === ptr) setFromEvent(e); });
+    zone.addEventListener('pointerup', (e) => { if (e.pointerId === ptr) { ptr = null; zone.releasePointerCapture(e.pointerId); stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); } });
+    zone.addEventListener('pointercancel', (e) => { if (e.pointerId === ptr) { ptr = null; stick.style.transform = ''; keyOff('KeyA'); keyOff('KeyD'); keyOff('KeyW'); keyOff('KeyS'); } });
 })();
 
 // Botones de acción con touch
 (function initMobileActions() {
     document.querySelectorAll('.act-btn').forEach(btn => {
         const code = btn.getAttribute('data-key');
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); if (gameRunning) keys[code] = true; });
-        btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[code] = false; });
-        btn.addEventListener('touchcancel', () => { keys[code] = false; });
+        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (gameRunning) keys[code] = true; btn.style.transform = 'scale(0.9)'; });
+        btn.addEventListener('pointerup', (e) => { e.preventDefault(); keys[code] = false; btn.style.transform = ''; });
+        btn.addEventListener('pointercancel', () => { keys[code] = false; btn.style.transform = ''; });
     });
 })();
 window.addEventListener('blur', () => {
@@ -2998,8 +3001,8 @@ function fitGame() {
         wrapper.style.transform = ''; wrapper.style.transformOrigin = 'center center';
         return;
     }
-    // Movil: llenar la pantalla manteniendo la proporcion 16:9 del juego
-    const vw = document.documentElement.clientWidth;
+    // Movil: llenar pantalla (margenes 0) manteniendo proporcion ~16:9
+    const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
     const landscape = vw >= vh;
     let w, h;
@@ -3007,7 +3010,8 @@ function fitGame() {
         w = vw; h = w * (450 / 800);
         if (h > vh) { h = vh; w = h * (800 / 450); }
     } else {
-        w = vw; h = w * (450 / 800);
+        w = vw; h = Math.min(vw * (450/800), vh);
+        w = h * (800 / 450);
     }
     wrapper.style.width = Math.floor(w) + 'px';
     wrapper.style.height = Math.floor(h) + 'px';
