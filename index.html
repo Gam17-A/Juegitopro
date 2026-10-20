@@ -285,6 +285,12 @@
         #ol-modes .ol-mode-active { border-color: #00ccff !important; box-shadow: 0 0 12px #00ccff; }
         .listo-btn { font-size: 15px; padding: 10px 30px; border-color: #33ff99; color: #33ff99; }
     /* ==== MOBILE TOUCH CONTROLS - 2 dedos (joystick izq + acciones der) ==== */
+    /* En pantallas tactiles el juego ocupa toda la pantalla */
+    @media (hover: none) and (pointer: coarse) {
+        body { height: 100dvh; overflow: hidden; align-items: flex-start; padding-top: 0; }
+        #game-wrapper { border: none; border-radius: 0; box-shadow: none; }
+        #game-wrapper canvas { width: 100%; height: 100%; }
+    }
     #mobile-ctrl {
         position: fixed; bottom: 14px; left: 0; right: 0; z-index: 60;
         display: none; flex-direction: row; justify-content: space-between;
@@ -2985,14 +2991,30 @@ function animate() {
 function fitGame() {
     const wrapper = document.getElementById('game-wrapper');
     if (!wrapper) return;
-    const mobileOpen = document.getElementById('mobile-ctrl') && window.getComputedStyle(document.getElementById('mobile-ctrl')).display !== 'none';
-    const availH = window.innerHeight - (mobileOpen ? 130 : 20);
-    const availW = window.innerWidth - 8;
-    const scale = Math.min(1, availW / 840, availH / 450);
-    wrapper.style.transform = (scale < 1) ? `scale(${scale})` : '';
-    wrapper.style.transformOrigin = 'top center';
+    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    if (!isTouch) {
+        // Desktop: comportamiento original (800x500 fijo, centrado)
+        wrapper.style.width = ''; wrapper.style.height = '';
+        wrapper.style.transform = ''; wrapper.style.transformOrigin = 'center center';
+        return;
+    }
+    // Movil: llenar la pantalla manteniendo la proporcion 16:9 del juego
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    const landscape = vw >= vh;
+    let w, h;
+    if (landscape) {
+        w = vw; h = w * (450 / 800);
+        if (h > vh) { h = vh; w = h * (800 / 450); }
+    } else {
+        w = vw; h = w * (450 / 800);
+    }
+    wrapper.style.width = Math.floor(w) + 'px';
+    wrapper.style.height = Math.floor(h) + 'px';
+    wrapper.style.transform = '';
 }
 window.addEventListener('resize', fitGame);
+window.addEventListener('orientationchange', () => setTimeout(fitGame, 120));
 
 initAccount();
 updateMuteIndicator();
