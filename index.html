@@ -288,7 +288,7 @@
     /* En pantallas tactiles el juego ocupa toda la pantalla */
     @media (hover: none) and (pointer: coarse) {
         body { height: 100dvh; overflow: hidden; align-items: flex-start; padding-top: 0; margin: 0; }
-        #game-wrapper { border: none; border-radius: 0; box-shadow: none; width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; }
+        #game-wrapper { border: none; border-radius: 0; box-shadow: none; width: 92vw; height: 92vh; max-width: 92vw; max-height: 92vh; }
         #game-wrapper canvas { width: 100%; height: 100%; object-fit: cover; }
         #mobile-ctrl { display: none !important; }
         body.in-match #mobile-ctrl { display: flex !important; }
@@ -312,7 +312,7 @@
     }
     /* Joystick izquierdo (transparente, grande para celular) */
     .joy-zone {
-        width: 130px; height: 130px; position: relative; border-radius: 50%;
+        width: 150px; height: 150px; position: relative; border-radius: 50%;
         background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.15);
         box-shadow: inset 0 0 15px rgba(255,255,255,0.06), 0 0 8px rgba(0,0,0,0.3);
         touch-action: none; user-select: none; flex-shrink: 0;
@@ -331,7 +331,7 @@
     /* Acciones derecha (transparentes, pequeñas) */
     .act-zone { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding-bottom: 2px; }
     .act-btn {
-        width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
+        width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.22);
         background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); font-size: 10px; font-weight: bold;
         display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.15;
         box-shadow: inset 0 2px 4px rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.25);
@@ -3058,7 +3058,8 @@ function fitGame() {
     const landscape = vw > vh;
     let w, h;
     if (landscape) {
-        w = vw; h = vh; // ocupacion total en landscape
+        h = vh * 0.82; w = h * (800 / 450);
+        if (w > vw * 0.92) { w = vw * 0.92; h = w * (450 / 800); }
     } else {
         w = vw * 0.98; h = Math.min(w * (450 / 800), vh * 0.82);
         w = h * (800 / 450);
