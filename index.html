@@ -289,7 +289,10 @@
     @media (hover: none) and (pointer: coarse) {
         body { height: 100dvh; overflow: hidden; align-items: flex-start; padding-top: 0; }
         #game-wrapper { border: none; border-radius: 0; box-shadow: none; }
-        #game-wrapper canvas { width: 100%; height: 100%; }
+        #game-wrapper canvas { width: 100%; height: 100%; object-fit: cover; }
+        /* Los controles tactiles solo durante la partida (no tapan menus online/nivel) */
+        #mobile-ctrl { display: none !important; }
+        body.in-match #mobile-ctrl { display: flex !important; }
     }
     #mobile-ctrl {
         position: fixed; bottom: 14px; left: 0; right: 0; z-index: 60;
@@ -308,9 +311,9 @@
     }
     /* Joystick izquierdo (transparente) */
     .joy-zone {
-        width: 140px; height: 140px; position: relative; border-radius: 50%;
-        background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.14);
-        box-shadow: inset 0 0 20px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.35);
+        width: 160px; height: 160px; position: relative; border-radius: 50%;
+        background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.14);
+        box-shadow: inset 0 0 20px rgba(255,255,255,0.05), 0 0 12px rgba(0,0,0,0.35);
         touch-action: none; user-select: none; flex-shrink: 0;
     }
     .joy-zone::before {
@@ -327,19 +330,17 @@
     /* Acciones derecha (transparentes) */
     .act-zone { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding-bottom: 4px; }
     .act-btn {
-        width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
-        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); font-size: 11px; font-weight: bold;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
+        background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.95); font-size: 11px; font-weight: bold;
+        display: flex; align-items: center; justify-content: center; text-align: center;
         box-shadow: inset 0 2px 4px rgba(255,255,255,0.06), 0 3px 8px rgba(0,0,0,0.3);
         touch-action: none; user-select: none; pointer-events: auto;
         backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
         transition: background 0.1s, border-color 0.1s, transform 0.06s;
     }
     .act-btn:active {
-        background: rgba(255,255,255,0.22); border-color: rgba(255,200,0,0.8); transform: scale(0.92);
+        background: rgba(255,255,255,0.24); border-color: rgba(255,200,0,0.8); transform: scale(0.92);
     }
-    .act-btn .icon { font-size: 21px; line-height: 1; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
-    .act-btn .label { font-size: 9px; margin-top: 1px; opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -349,12 +350,12 @@
             <div class="joy-stick" id="joy-stick"></div>
         </div>
         <div class="act-zone" id="act-zone">
-            <button class="act-btn" data-key="KeyF" aria-label="Golpe"><div class="icon">✊</div><div class="label">GOLPE</div></button>
-            <button class="act-btn" data-key="KeyE" aria-label="Ki"><div class="icon">⚡</div><div class="label">KI</div></button>
-            <button class="act-btn" data-key="KeyQ" aria-label="Ult"><div class="icon">🔥</div><div class="label">ULT</div></button>
-            <button class="act-btn" data-key="KeyR" aria-label="Volar"><div class="icon">🕊️</div><div class="label">VOLAR</div></button>
-            <button class="act-btn" data-key="KeyC" aria-label="Cargar"><div class="icon">🔋</div><div class="label">CARGAR</div></button>
-            <button class="act-btn" data-key="KeyT" aria-label="Despertar"><div class="icon">☀️</div><div class="label">DESPERTAR</div></button>
+            <button class="act-btn" data-key="KeyF" aria-label="Golpe">GOLPE</button>
+            <button class="act-btn" data-key="KeyE" aria-label="Ki">KI</button>
+            <button class="act-btn" data-key="KeyQ" aria-label="Ult">ULT</button>
+            <button class="act-btn" data-key="KeyR" aria-label="Volar">VOLAR</button>
+            <button class="act-btn" data-key="KeyC" aria-label="Cargar">CARGAR</button>
+            <button class="act-btn" data-key="KeyT" aria-label="Despertar">DESPERTAR</button>
         </div>
     </div>
 
@@ -1107,8 +1108,26 @@ window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-function keyOn(code) { if (gameRunning) keys[code] = true; }
-function keyOff(code) { keys[code] = false; }
+function keyOn(code) {
+    if (!gameRunning) return;
+    keys[code] = true;
+    // En online, si soy p2, necesito que se lean mis acciones tanto como J1 como J2 para sendIn()
+    if (isOnline() && net && net.mySide === 'p2') {
+        const p2Map = { 'KeyA':'ArrowLeft','KeyD':'ArrowRight','KeyW':'ArrowUp','KeyS':'ArrowDown',
+                        'KeyC':'KeyI','KeyF':'KeyK','KeyE':'KeyL','KeyQ':'KeyU','KeyR':'KeyO','KeyT':'KeyP' };
+        const mapped = p2Map[code];
+        if (mapped) keys[mapped] = true;
+    }
+}
+function keyOff(code) {
+    keys[code] = false;
+    if (isOnline() && net && net.mySide === 'p2') {
+        const p2Map = { 'KeyA':'ArrowLeft','KeyD':'ArrowRight','KeyW':'ArrowUp','KeyS':'ArrowDown',
+                        'KeyC':'KeyI','KeyF':'KeyK','KeyE':'KeyL','KeyQ':'KeyU','KeyR':'KeyO','KeyT':'KeyP' };
+        const mapped = p2Map[code];
+        if (mapped) keys[mapped] = false;
+    }
+}
 
 // ---- Joystick virtual ----
 (function initJoystick() {
@@ -1139,7 +1158,7 @@ function keyOff(code) { keys[code] = false; }
 (function initMobileActions() {
     document.querySelectorAll('.act-btn').forEach(btn => {
         const code = btn.getAttribute('data-key');
-        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (gameRunning) keys[code] = true; btn.style.transform = 'scale(0.9)'; });
+        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; btn.style.transform = 'scale(0.9)'; });
         btn.addEventListener('pointerup', (e) => { e.preventDefault(); keys[code] = false; btn.style.transform = ''; });
         btn.addEventListener('pointercancel', () => { keys[code] = false; btn.style.transform = ''; });
     });
@@ -2302,6 +2321,7 @@ let time = 90, timerInterval;
 let ROUND_TIME = 90;
 
 function startMatch(p1Char, p2Char) {
+    document.body.classList.add('in-match');
     document.getElementById('select-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'flex';
     document.getElementById('result-display').style.display = 'none';
@@ -2408,6 +2428,7 @@ function runCountdown(onFinish) {
 }
 
 function returnToSelect() {
+    document.body.classList.remove('in-match');
     gameRunning = false;
     if (gameMode === 'online') {
         gameMode = 'pvp';
@@ -2423,6 +2444,7 @@ function returnToSelect() {
 function endGame(msg, result) {
     gameRunning = false;
     paused = false;
+    document.body.classList.remove('in-match');
     document.getElementById('pause-overlay').style.display = 'none';
     document.getElementById('winner-text').innerText = msg;
     document.getElementById('result-display').style.display = 'block';
@@ -3001,16 +3023,16 @@ function fitGame() {
         wrapper.style.transform = ''; wrapper.style.transformOrigin = 'center center';
         return;
     }
-    // Movil: llenar pantalla (margenes 0) manteniendo proporcion ~16:9
+    // Movil: casi pantalla completa (deja solo 8% para bordes/controles)
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
     const landscape = vw >= vh;
     let w, h;
     if (landscape) {
-        w = vw; h = w * (450 / 800);
-        if (h > vh) { h = vh; w = h * (800 / 450); }
+        w = vw * 0.96; h = w * (450 / 800);
+        if (h > vh * 0.92) { h = vh * 0.92; w = h * (800 / 450); }
     } else {
-        w = vw; h = Math.min(vw * (450/800), vh);
+        w = vw * 0.98; h = Math.min(w * (450 / 800), vh * 0.88);
         w = h * (800 / 450);
     }
     wrapper.style.width = Math.floor(w) + 'px';
