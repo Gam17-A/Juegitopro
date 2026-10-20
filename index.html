@@ -288,7 +288,7 @@
     /* En pantallas tactiles el juego ocupa toda la pantalla */
     @media (hover: none) and (pointer: coarse) {
         body { height: 100dvh; overflow: hidden; align-items: flex-start; padding-top: 0; margin: 0; }
-        #game-wrapper { border: none; border-radius: 0; box-shadow: none; width: 85vw; height: 85vh; max-width: 85vw; max-height: 85vh; }
+        #game-wrapper { border: none; border-radius: 0; box-shadow: none; width: 92vw; height: 92vh; max-width: 92vw; max-height: 92vh; }
         #game-wrapper canvas { width: 100%; height: 100%; object-fit: cover; }
         #mobile-ctrl { display: none !important; }
         body.in-match #mobile-ctrl { display: flex !important; }
@@ -3058,8 +3058,8 @@ function fitGame() {
     const landscape = vw > vh;
     let w, h;
     if (landscape) {
-        h = vh * 0.70; w = h * (800 / 450);
-        if (w > vw * 0.85) { w = vw * 0.85; h = w * (450 / 800); }
+        h = vh * 0.82; w = h * (800 / 450);
+        if (w > vw * 0.92) { w = vw * 0.92; h = w * (450 / 800); }
     } else {
         w = vw * 0.98; h = Math.min(w * (450 / 800), vh * 0.82);
         w = h * (800 / 450);
