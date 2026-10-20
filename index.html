@@ -284,9 +284,78 @@
         #ol-modes .mode-btn { font-size: 13px; }
         #ol-modes .ol-mode-active { border-color: #00ccff !important; box-shadow: 0 0 12px #00ccff; }
         .listo-btn { font-size: 15px; padding: 10px 30px; border-color: #33ff99; color: #33ff99; }
-    </style>
+
+    /* ==== Controles táctiles para celular ==== */
+    #mobile-controls {
+        position: fixed;
+        bottom: 12px; left: 8px; right: 8px;
+        z-index: 60;
+        display: none;
+        flex-direction: column; align-items: center; gap: 6px;
+        padding: 8px 6px;
+        background: rgba(0,0,0,0.85);
+        border: 2px solid #555;
+        border-radius: 14px;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 0 20px rgba(0,0,0,0.7);
+        touch-action: none;
+    }
+    #mobile-controls.hidden { display: none !important; }
+    #mobile-controls.show { display: flex !important; }
+
+    .touch-row { display: flex; justify-content: center; gap: 5px; margin: 2px 0; flex-wrap: wrap; }
+
+    .touch-btn {
+        background: #222; border: 2px solid #555; color: #fff;
+        border-radius: 10px; font-weight: bold; cursor: pointer;
+        user-select: none; -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: none;
+        box-shadow: 0 4px 0 #111;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .touch-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #111; border-color: #ffcc00; }
+
+    .touch-btn.dpad { width: 56px; height: 56px; font-size: 26px; line-height: 1; border-radius: 14px; }
+    .touch-btn.act { width: 74px; height: 74px; font-size: 14px; border-radius: 12px; padding: 4px 2px; line-height: 1.05; }
+    .touch-btn.act .label { font-size: 9px; margin-top: 3px; color: #aaa; }
+
+    #mobile-utility { position: fixed; top: 8px; right: 8px; z-index: 60; display: none; gap: 8px; }
+    @media (max-width: 760px), (hover: none) and (pointer: coarse) { #mobile-utility { display: flex; } }
+    .util-btn { background: rgba(30,30,30,0.9); border: 2px solid #777; color: #fff; border-radius: 50%; width: 42px; height: 42px; font-size: 18px; display: flex; align-items: center; justify-content: center; touch-action: none; box-shadow: 0 4px 0 #333; }
+    .util-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #333; }
+
+    /* Ocultar leyenda de teclado y mostrar controles táctiles en móvil */
+    @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+        #mobile-controls { display: flex; }
+        .controls-info { display: none !important; }
+    }
 </head>
 <body>
+
+    <!-- Controles táctiles para móvil -->
+    <div id="mobile-controls">
+        <div class="touch-row">
+            <button class="touch-btn dpad" data-action="left" data-type="hold">←</button>
+            <button class="touch-btn dpad" data-action="up" data-type="hold">↑</button>
+            <button class="touch-btn dpad" data-action="right" data-type="hold">→</button>
+            <button class="touch-btn dpad" data-action="down" data-type="hold">↓</button>
+        </div>
+        <div class="touch-row">
+            <button class="touch-btn act" data-action="attack" data-type="tap"><div>✊</div><div class="label">GOLPE</div></button>
+            <button class="touch-btn act" data-action="ki" data-type="tap"><div>⚡</div><div class="label">KI</div></button>
+            <button class="touch-btn act" data-action="ult" data-type="tap"><div>🔥</div><div class="label">ULT</div></button>
+            <button class="touch-btn act" data-action="fly" data-type="tap"><div>🕊️</div><div class="label">VOLAR</div></button>
+            <button class="touch-btn act" data-action="charge" data-type="hold"><div>🔋</div><div class="label">CARGAR</div></button>
+            <button class="touch-btn act" data-action="awaken" data-type="tap"><div>☀️</div><div class="label">DESPERTAR</div></button>
+        </div>
+    </div>
+
+    <!-- Utilidades táctiles (pausa / sonido) -->
+    <div id="mobile-utility">
+        <button class="util-btn" id="mob-pause-btn" title="Pausa">⏸</button>
+        <button class="util-btn" id="mob-mute-btn" title="Sonido">🔊</button>
+    </div>
 
     <div id="game-wrapper">
         <div class="scanlines"></div>
@@ -1037,10 +1106,92 @@ window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+// ---- Controles táctiles para móvil ----
+// Se traducen a eventos de teclado sintéticos para reutilizar toda la lógica
+// existente (doble toque = dash, envío de inputs online, handleSinglePress...).
+const TOUCH_LAYOUTS = {
+    p1: { left: 'KeyA', up: 'KeyW', right: 'KeyD', down: 'KeyS',
+          attack: 'KeyF', ki: 'KeyE', ult: 'KeyQ', fly: 'KeyR', charge: 'KeyC', awaken: 'KeyT' },
+    p2: { left: 'ArrowLeft', up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown',
+          attack: 'KeyK', ki: 'KeyL', ult: 'KeyU', fly: 'KeyO', charge: 'KeyI', awaken: 'KeyP' }
+};
+// En online jugamos del lado que nos asignó el servidor; en local siempre J1.
+function touchLayout() {
+    return (gameMode === 'online' && net && net.mySide === 'p2') ? TOUCH_LAYOUTS.p2 : TOUCH_LAYOUTS.p1;
+}
+
+const touchHeld = new Set();      // códigos que el dedo mantiene pulsados
+const touchReleaseTimers = new Map();
+const touchPressedBtns = new WeakSet();
+
+function touchKeyEvent(type, code) {
+    window.dispatchEvent(new KeyboardEvent(type, { code: code, bubbles: true }));
+}
+
+const mobileBtns = document.querySelectorAll('#mobile-controls .touch-btn');
+mobileBtns.forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    const type = btn.getAttribute('data-type'); // 'hold' (movimiento) | 'tap' (acción)
+    if (!action) return;
+
+    const press = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (!gameRunning) return;
+        const code = touchLayout()[action];
+        if (!code) return;
+        touchPressedBtns.add(btn);
+        touchHeld.add(code);
+        const t = touchReleaseTimers.get(code);
+        if (t) { clearTimeout(t); touchReleaseTimers.delete(code); }
+        touchKeyEvent('keydown', code);
+    };
+
+    const release = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (!touchPressedBtns.has(btn)) return;
+        touchPressedBtns.delete(btn);
+        const code = touchLayout()[action];
+        if (!code) return;
+        touchHeld.delete(code);
+        // Los botones de acción se sueltan con retardo para que el bucle del juego
+        // llegue a detectar la pulsación aunque el toque sea más corto que un frame.
+        const delay = (type === 'tap') ? 120 : 0;
+        const t = setTimeout(() => {
+            touchReleaseTimers.delete(code);
+            if (!touchHeld.has(code)) touchKeyEvent('keyup', code);
+        }, delay);
+        touchReleaseTimers.set(code, t);
+    };
+
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+// Al perder el foco se sueltan todos los botones táctiles
+function releaseAllTouch() {
+    touchHeld.clear();
+    touchReleaseTimers.forEach((t) => clearTimeout(t));
+    touchReleaseTimers.clear();
+    Object.values(TOUCH_LAYOUTS).forEach((lay) => {
+        Object.values(lay).forEach((code) => { if (keys[code]) keys[code] = false; });
+    });
+}
+
+// Botones de utilidad móvil
+const mobPause = document.getElementById('mob-pause-btn');
+if (mobPause) mobPause.addEventListener('click', () => { if (gameRunning && !paused && gameMode !== 'online') togglePause(); });
+const mobMute = document.getElementById('mob-mute-btn');
+if (mobMute) mobMute.addEventListener('click', () => { toggleMute(); mobMute.textContent = muted ? '🔇' : '🔊'; });
+
 window.addEventListener('blur', () => {
     if (gameRunning && !paused && gameMode !== 'online') togglePause();
     for (let k in keys) keys[k] = false;
     for (let k in keyLock) keyLock[k] = false;
+    releaseAllTouch();
 });
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
